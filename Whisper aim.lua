@@ -1,29 +1,20 @@
+-- Whisper Kit Enhancement Script for Roblox Bedwars
+-- Features: Projectile Aimbot, GUI Control Panel, and Overlay System
+
+-- Services
 local Players = game:GetService("Players")
-repeat task.wait() until game:IsLoaded()
-
-local LocalPlayer = Players.LocalPlayer 
-
-repeat task.wait() until LocalPlayer and LocalPlayer.Character  
-
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local function SafeGetCharacter()
-    if LocalPlayer and LocalPlayer.Character then
-        return LocalPlayer.Character
-    end
-    return LocalPlayer.CharacterAdded:Wait()
-end
+-- Player References
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-local function SafeGetCamera()
-    return workspace.CurrentCamera or game:GetService("Workspace"):FindFirstChildOfClass("Camera")
-end
-
-Character = SafeGetCharacter()
-Camera = SafeGetCamera()
-
+-- Configuration
 local Config = {
     Enabled = true,
     AimbotEnabled = true,
@@ -52,18 +43,19 @@ local Config = {
     NotificationsEnabled = true
 }
 
+-- Variables
 local AimbotTarget = nil
 local AimbotActive = false
 local GuiVisible = true
-local ProjectileSpeed = 100 
+local ProjectileSpeed = 100 -- Will be updated based on weapon
 
-
+-- Create GUI
 local WhisperGUI = Instance.new("ScreenGui")
 WhisperGUI.Name = "WhisperEnhancedGUI"
 WhisperGUI.ResetOnSpawn = false
 WhisperGUI.Parent = game.CoreGui
 
-
+-- Main Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 300, 0, 350)
@@ -74,37 +66,7 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = WhisperGUI
 
-local function SelfDestruct()
-    if WhisperGUI then WhisperGUI:Destroy() end
-    if ESPFolder then ESPFolder:Destroy() end
-    if FOVCircle then FOVCircle:Remove() end
-    RunService:UnbindFromRenderStep("AimbotStep")
-
-    -- Stop all input events
-    for _, connection in pairs(getconnections(UserInputService.InputBegan)) do
-        connection:Disconnect()
-    end
-    for _, connection in pairs(getconnections(UserInputService.InputEnded)) do
-        connection:Disconnect()
-    end
-    for _, connection in pairs(getconnections(RunService.RenderStepped)) do
-        connection:Disconnect()
-    end
-
-    script:Destroy()
-end
-
-local DestroyButton = Instance.new("TextButton")
-DestroyButton.Name = "DestroyButton"
-DestroyButton.Size = UDim2.new(1, 0, 0, 30)
-DestroyButton.Position = UDim2.new(0, 0, 1, -40)
-DestroyButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-DestroyButton.Text = "Destroy Script"
-DestroyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-DestroyButton.Parent = MainFrame
-
-DestroyButton.MouseButton1Click:Connect(SelfDestruct)
-
+-- Title Bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
 TitleBar.Size = UDim2.new(1, 0, 0, 30)
@@ -124,6 +86,7 @@ TitleText.Font = Enum.Font.SourceSansBold
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Parent = TitleBar
 
+-- Content Frame
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Name = "ContentFrame"
 ContentFrame.Size = UDim2.new(1, -20, 1, -40)
@@ -131,6 +94,7 @@ ContentFrame.Position = UDim2.new(0, 10, 0, 35)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
+-- Create Toggle Function
 local function CreateToggle(name, default, position, callback)
     local ToggleFrame = Instance.new("Frame")
     ToggleFrame.Name = name .. "Toggle"
@@ -206,6 +170,7 @@ local function CreateToggle(name, default, position, callback)
     }
 end
 
+-- Create Slider Function
 local function CreateSlider(name, min, max, default, position, callback)
     local SliderFrame = Instance.new("Frame")
     SliderFrame.Name = name .. "Slider"
@@ -316,6 +281,7 @@ local function CreateSlider(name, min, max, default, position, callback)
     }
 end
 
+-- Create GUI Elements
 local AimbotToggle = CreateToggle("Aimbot", Config.AimbotEnabled, UDim2.new(0, 0, 0, 0), function(value)
     Config.AimbotEnabled = value
     ShowNotification("Aimbot " .. (value and "Enabled" or "Disabled"))
@@ -352,6 +318,7 @@ local PredictionSlider = CreateSlider("Prediction", 0, 300, Config.PredictionFac
     Config.PredictionFactor = value / 1000
 end)
 
+-- Create FOV Circle
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = Config.ShowFOV
 FOVCircle.Radius = Config.FOV
@@ -361,6 +328,7 @@ FOVCircle.Color = Config.FOVColor
 FOVCircle.Filled = false
 FOVCircle.NumSides = 60
 
+-- Notification System
 local NotificationFrame = Instance.new("Frame")
 NotificationFrame.Name = "NotificationFrame"
 NotificationFrame.Size = UDim2.new(0, 250, 0, 0)
@@ -396,9 +364,11 @@ function ShowNotification(text, duration)
     NotificationText.Font = Enum.Font.SourceSans
     NotificationText.TextXAlignment = Enum.TextXAlignment.Left
     NotificationText.Parent = Notification
-
+    
+    -- Animate in
     TweenService:Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
     
+    -- Animate out after duration
     task.delay(duration, function()
         local tween = TweenService:Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {Position = UDim2.new(1, 10, 0, 0)})
         tween:Play()
@@ -408,6 +378,7 @@ function ShowNotification(text, duration)
     end)
 end
 
+-- ESP System
 local ESPFolder = Instance.new("Folder")
 ESPFolder.Name = "WhisperESP"
 ESPFolder.Parent = game.CoreGui
@@ -453,6 +424,7 @@ function UpdateESP()
                 local humanoidRootPart = player.Character.HumanoidRootPart
                 local isTeammate = Config.TeamCheck and player.Team == LocalPlayer.Team
                 
+                -- Update ESP elements
                 local box = esp:FindFirstChild("Box")
                 if box then
                     box.Adornee = isTeammate and nil or humanoidRootPart
@@ -472,37 +444,25 @@ function UpdateESP()
     end
 end
 
-local function RemoveESP(player)
-    local esp = ESPFolder:FindFirstChild(player.Name)
-    if esp then
-        esp:Destroy()
-    end
-end
-
-Players.PlayerRemoving:Connect(RemoveESP)
-
-local function GetValidTargetPart(character)
-    return character:FindFirstChild(Config.TargetPart) or character:FindFirstChild("Head") or character:FindFirstChild("Torso")
-end
-
+-- Aimbot Functions
 function GetClosestPlayerToCursor()
     local closestPlayer = nil
     local shortestDistance = Config.FOV
-
+    
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             if Config.TeamCheck and player.Team == LocalPlayer.Team then continue end
             
-            local targetPart = GetValidTargetPart(player.Character)
-            if not targetPart then continue end  -- Now it won’t skip players with missing parts
-
+            local targetPart = player.Character:FindFirstChild(Config.TargetPart)
+            if not targetPart then continue end
+            
             local screenPoint = Camera:WorldToScreenPoint(targetPart.Position)
             local screenDistance = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
-
+            
             if screenDistance < shortestDistance then
                 local ray = Ray.new(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * Config.MaxDistance)
                 local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, player.Character})
-
+                
                 if hit and hit:IsDescendantOf(player.Character) or not hit then
                     closestPlayer = player
                     shortestDistance = screenDistance
@@ -510,7 +470,7 @@ function GetClosestPlayerToCursor()
             end
         end
     end
-
+    
     return closestPlayer
 end
 
@@ -535,6 +495,7 @@ function AimAt(position)
     return aimCFrame
 end
 
+-- Hook game's projectile system for silent aim
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local args = {...}
@@ -543,12 +504,14 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     if method == "FireServer" and Config.AimbotEnabled and Config.SilentAim and AimbotTarget and math.random(1, 100) <= Config.HitChance then
         local functionName = self.Name
         
+        -- Check if this is a projectile firing remote
         if functionName:find("projectile") or functionName:find("arrow") or functionName:find("bow") or functionName:find("throw") then
             local targetPart = AimbotTarget.Character:FindFirstChild(Config.TargetPart)
             if targetPart then
                 local targetVelocity = AimbotTarget.Character.HumanoidRootPart.Velocity
                 local predictedPosition = PredictProjectile(targetPart.Position, targetVelocity)
                 
+                -- Modify firing direction in args
                 if #args >= 2 and typeof(args[2]) == "Vector3" then
                     args[2] = (predictedPosition - Camera.CFrame.Position).Unit
                 end
@@ -559,18 +522,19 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return oldNamecall(self, unpack(args))
 end)
 
-
+-- Main Loop
 RunService.RenderStepped:Connect(function()
-
+    -- Update FOV Circle
     FOVCircle.Position = Vector2.new(Mouse.X, Mouse.Y)
     FOVCircle.Radius = Config.FOV
     FOVCircle.Visible = Config.ShowFOV and Config.AimbotEnabled
     
-
+    -- Update ESP
     if Config.ESPEnabled then
         UpdateESP()
     end
     
+    -- Update Aimbot
     if Config.AimbotEnabled then
         AimbotTarget = GetClosestPlayerToCursor()
         
@@ -586,6 +550,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- Input Handling
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
@@ -603,9 +568,10 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     end
 end)
 
+-- Detect projectile weapons to update projectile speed
 LocalPlayer.Character.ChildAdded:Connect(function(child)
     if child:IsA("Tool") then
-
+        -- Try to determine projectile speed based on weapon type
         if child.Name:lower():find("bow") then
             ProjectileSpeed = 100
         elseif child.Name:lower():find("crossbow") then
@@ -620,11 +586,13 @@ LocalPlayer.Character.ChildAdded:Connect(function(child)
     end
 end)
 
+-- Handle character respawning
 LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
     
     newCharacter.ChildAdded:Connect(function(child)
         if child:IsA("Tool") then
+            -- Update projectile speed based on weapon
             if child.Name:lower():find("bow") then
                 ProjectileSpeed = 100
             elseif child.Name:lower():find("crossbow") then
@@ -640,6 +608,7 @@ LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     end)
 end)
 
+-- Initial notifications
 ShowNotification("Whisper Kit Enhanced Loaded", 3)
 ShowNotification("Press X to activate aimbot", 3)
 ShowNotification("Press Right Ctrl to toggle GUI", 3)
