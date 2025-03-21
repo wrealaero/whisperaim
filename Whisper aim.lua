@@ -22,6 +22,7 @@ local Config = {
     PredictionEnabled = true,
     SilentAim = false,
     AimbotStyle = "Legit",
+    NearestVisibleOnly = false,
     
     AimKey = Enum.KeyCode.X,
     ToggleGuiKey = Enum.KeyCode.RightControl,
@@ -30,12 +31,12 @@ local Config = {
     ShowFOV = true,
     FOVColor = Color3.fromRGB(255, 255, 255),
     
-    PredictionFactor = 0.165,
-    HitChance = function()
-        return math.clamp(100 - (AimbotTarget and (AimbotTarget.Character.HumanoidRootPart.Position - Camera.CFrame.Position).Magnitude / 2 or 50), 50, 100)
-    end,
+PredictionFactor = 0.165,
+HitChance = function()
+    return math.clamp(100 - (AimbotTarget and (AimbotTarget.Character.HumanoidRootPart.Position - Camera.CFrame.Position).Magnitude / 2 or 50), 50, 100)
+end,
 
-    TargetPart = "HumanoidRootPart",
+TargetPart = "HumanoidRootPart",
     MaxDistance = 150,
     TeamCheck = true,
     
@@ -512,7 +513,7 @@ function GetClosestPlayerToCursor()
                 local ray = Ray.new(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * Config.MaxDistance)
                 local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, player.Character})
                 
-                if hit and hit:IsDescendantOf(player.Character) or not hit then
+                if (not Config.NearestVisibleOnly) or (hit and hit:IsDescendantOf(player.Character)) then
                     closestPlayer = player
                     shortestDistance = screenDistance
                 end
