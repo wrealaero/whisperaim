@@ -30,7 +30,9 @@ local Config = {
     FOVColor = Color3.fromRGB(255, 255, 255),
     
     PredictionFactor = 0.165,
-    HitChance = 85,
+    Config.HitChance = function()
+    return math.clamp(100 - (AimbotTarget and (AimbotTarget.Character.HumanoidRootPart.Position - Camera.CFrame.Position).Magnitude / 2 or 50), 50, 100)
+end
     
     TargetPart = "HumanoidRootPart",
     MaxDistance = 150,
@@ -63,8 +65,29 @@ MainFrame.Position = UDim2.new(0.8, 0, 0.5, -175)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true
 MainFrame.Parent = WhisperGUI
+MainFrame.Draggable = false -- Disable default dragging
+local dragging, dragInput, startPos, startMousePos
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        startPos = MainFrame.Position
+        startMousePos = input.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - startMousePos
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
@@ -480,7 +503,10 @@ function PredictProjectile(targetPosition, targetVelocity)
     local distance = (targetPosition - Camera.CFrame.Position).Magnitude
     local timeToHit = distance / ProjectileSpeed
     
-    return targetPosition + (targetVelocity * timeToHit * Config.PredictionFactor)
+    
+    local gravityEffect = Vector3.new(0, -workspace.Gravity * (timeToHit ^ 2) / 2, 0)
+    
+    return targetPosition + (targetVelocity * timeToHit * Config.PredictionFactor) + gravityEffect
 end
 
 function AimAt(position)
@@ -489,7 +515,13 @@ function AimAt(position)
     local aimCFrame = CFrame.new(Camera.CFrame.Position, position)
     
     if not Config.SilentAim then
-        Camera.CFrame = Camera.CFrame:Lerp(aimCFrame, 0.2)
+        if Config.AimbotStyle == "Smooth" then
+            Camera.CFrame = Camera.CFrame:Lerp(aimCFrame, 0.12) -- Slower aim
+        elseif Config.AimbotStyle == "Legit" then
+            Camera.CFrame = Camera.CFrame:Lerp(aimCFrame, 0.2) -- Normal aim
+        elseif Config.AimbotStyle == "Rage" then
+            Camera.CFrame = aimCFrame -- Instant aim
+        end
     end
     
     return aimCFrame
@@ -505,7 +537,7 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local functionName = self.Name
         
         -- Check if this is a projectile firing remote
-        if functionName:find("projectile") or functionName:find("arrow") or functionName:find("bow") or functionName:find("throw") then
+        if functionName:lower():find("fire") or functionName:lower():find("projectile") or functionName:lower():find("arrow") or functionName:lower():find("throw") then
             local targetPart = AimbotTarget.Character:FindFirstChild(Config.TargetPart)
             if targetPart then
                 local targetVelocity = AimbotTarget.Character.HumanoidRootPart.Velocity
@@ -513,7 +545,7 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                 
                 -- Modify firing direction in args
                 if #args >= 2 and typeof(args[2]) == "Vector3" then
-                    args[2] = (predictedPosition - Camera.CFrame.Position).Unit
+                    args[2] = (predictedPosition - Camera.CFrame.Position).Unit * Config.MaxDistance
                 end
             end
         end
