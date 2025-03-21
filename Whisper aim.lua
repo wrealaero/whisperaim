@@ -21,8 +21,6 @@ local Config = {
     OverlayEnabled = true,
     PredictionEnabled = true,
     SilentAim = false,
-    AimbotStyle = "Legit",
-    NearestVisibleOnly = false,
     
     AimKey = Enum.KeyCode.X,
     ToggleGuiKey = Enum.KeyCode.RightControl,
@@ -31,12 +29,12 @@ local Config = {
     ShowFOV = true,
     FOVColor = Color3.fromRGB(255, 255, 255),
     
-PredictionFactor = 0.165,
-HitChance = function()
+    PredictionFactor = 0.165,
+    Config.HitChance = function()
     return math.clamp(100 - (AimbotTarget and (AimbotTarget.Character.HumanoidRootPart.Position - Camera.CFrame.Position).Magnitude / 2 or 50), 50, 100)
-end,
-
-TargetPart = "HumanoidRootPart",
+end
+    
+    TargetPart = "HumanoidRootPart",
     MaxDistance = 150,
     TeamCheck = true,
     
@@ -68,6 +66,8 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Parent = WhisperGUI
+MainFrame.Draggable = false -- Disable default dragging
+local dragging, dragInput, startPos, startMousePos
 
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -81,9 +81,6 @@ TitleBar.InputBegan:Connect(function(input)
         end)
     end
 end)
-
-MainFrame.Draggable = false -- Disable default dragging
-local dragging, dragInput, startPos, startMousePos
 
 UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -111,30 +108,6 @@ TitleText.TextSize = 18
 TitleText.Font = Enum.Font.SourceSansBold
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Parent = TitleBar
-
--- Dragging only through TitleBar
-MainFrame.Draggable = false
-local dragging, dragInput, startPos, startMousePos
-
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        startPos = MainFrame.Position
-        startMousePos = input.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - startMousePos
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
 
 -- Content Frame
 local ContentFrame = Instance.new("Frame")
@@ -513,7 +486,7 @@ function GetClosestPlayerToCursor()
                 local ray = Ray.new(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * Config.MaxDistance)
                 local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, player.Character})
                 
-                if (not Config.NearestVisibleOnly) or (hit and hit:IsDescendantOf(player.Character)) then
+                if hit and hit:IsDescendantOf(player.Character) or not hit then
                     closestPlayer = player
                     shortestDistance = screenDistance
                 end
@@ -572,7 +545,7 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                 
                 -- Modify firing direction in args
                 if #args >= 2 and typeof(args[2]) == "Vector3" then
-                    args[2] = (predictedPosition - Camera.CFrame.Position).Unit * (predictedPosition - Camera.CFrame.Position).Magnitude
+                    args[2] = (predictedPosition - Camera.CFrame.Position).Unit * Config.MaxDistance
                 end
             end
         end
